@@ -1,3 +1,5 @@
+Simple tool for creating collages out of multiple images. The images can be cut apart like regular photographs. 
+
 ## Getting Started
 
 ### Installation
