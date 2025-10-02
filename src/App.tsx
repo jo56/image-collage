@@ -160,15 +160,6 @@ function App() {
 
           // Draw selection highlight for selected images
           const isSelected = dragStateRef.current.selectedImage?.id === img.id;
-          if (isSelected) {
-            const hw = (img.img.width * img.scale) / 2;
-            const hh = (img.img.height * img.scale) / 2;
-            form.stroke("#00ff00", 3 / viewport.scale);
-            form.rect([
-              [img.position.x - hw, img.position.y - hh],
-              [img.position.x + hw, img.position.y + hh],
-            ]);
-          }
 
           // Draw resize handles in resize mode
           if (currentModeRef.current === "resize" && isSelected) {
@@ -241,9 +232,9 @@ function App() {
           );
 
           if (currentModeRef.current === "move" && clickedImage) {
+            // Only mark as dragging, don't move yet
             dragStateRef.current = {
               ...dragStateRef.current,
-              isDraggingImage: true,
               selectedImage: clickedImage,
               imageStartPos: clickedImage.position.clone(),
               dragStart: worldPointer.clone(),
@@ -318,17 +309,17 @@ function App() {
           }
         }
 
-        if (type === "move") {
-          if (dragStateRef.current.isDraggingImage && dragStateRef.current.selectedImage && dragStateRef.current.dragStart && dragStateRef.current.imageStartPos) {
+        if (type === "drag") {
+          if (currentModeRef.current === "move" && dragStateRef.current.selectedImage && dragStateRef.current.dragStart && dragStateRef.current.imageStartPos) {
+            dragStateRef.current.isDraggingImage = true;
             const delta = worldPointer.$subtract(dragStateRef.current.dragStart);
+            const newPosition = dragStateRef.current.imageStartPos.$add(delta);
 
-            setImages((prev) =>
-              prev.map((img) =>
-                img.id === dragStateRef.current.selectedImage?.id
-                  ? { ...img, position: dragStateRef.current.imageStartPos!.$add(delta) }
-                  : img
-              )
-            );
+            // Update directly in the ref for smooth movement
+            const imgIndex = imagesRef.current.findIndex(img => img.id === dragStateRef.current.selectedImage?.id);
+            if (imgIndex !== -1) {
+              imagesRef.current[imgIndex].position = newPosition;
+            }
           } else if (dragStateRef.current.isResizing && dragStateRef.current.selectedImage && dragStateRef.current.dragStart) {
             const delta = worldPointer.$subtract(dragStateRef.current.dragStart);
             const distance = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
@@ -361,6 +352,11 @@ function App() {
         }
 
         if (type === "up") {
+          // Sync state after dragging
+          if (dragStateRef.current.isDraggingImage) {
+            setImages([...imagesRef.current]);
+          }
+
           // If finishing a cut, create a new image from the cut region
           if (dragStateRef.current.isCutting && dragStateRef.current.cutPath.length > 2 && dragStateRef.current.selectedImage) {
             const cutImage = dragStateRef.current.selectedImage;
