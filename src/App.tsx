@@ -195,7 +195,6 @@ function App() {
         const pointer = new Pt(px, py);
         const worldPointer = screenToWorld(pointer, viewport);
 
-
         if (type === "down") {
           // Find clicked image (reverse order to get top image)
           const clickedImage = [...imagesRef.current].reverse().find((img) =>
@@ -282,12 +281,11 @@ function App() {
             // Start/continue drawing cut path
             dragStateRef.current.isCutting = true;
             if (dragStateRef.current.cutPath.length === 0) {
-              dragStateRef.current.cutPath = [worldPointer.clone()];
-            } else {
-              const lastPoint = dragStateRef.current.cutPath[dragStateRef.current.cutPath.length - 1];
-              if (lastPoint && worldPointer.$subtract(lastPoint).magnitude() > 5 / viewport.scale) {
-                dragStateRef.current.cutPath.push(worldPointer.clone());
-              }
+              dragStateRef.current.cutPath.push(worldPointer.clone());
+            }
+            const lastPoint = dragStateRef.current.cutPath[dragStateRef.current.cutPath.length - 1];
+            if (worldPointer.$subtract(lastPoint).magnitude() > 3 / viewport.scale) {
+              dragStateRef.current.cutPath.push(worldPointer.clone());
             }
           } else if (currentModeRef.current === "erase" && dragStateRef.current.selectedImage) {
             // Erase on drag
@@ -300,78 +298,76 @@ function App() {
           }
         }
 
-        if (type === "up") {
+        if (type === "up" || type === "drop") {
+          const wasCutting = dragStateRef.current.isCutting;
+          const cutPath = dragStateRef.current.cutPath;
+          const cutImage = dragStateRef.current.selectedImage;
+
           // Sync state after dragging or resizing
           if (dragStateRef.current.isDraggingImage || dragStateRef.current.isResizing) {
             setImages([...imagesRef.current]);
           }
 
           // If finishing a cut, create a new image from the cut region
-          if (dragStateRef.current.isCutting && dragStateRef.current.cutPath.length > 2 && dragStateRef.current.selectedImage) {
-            const cutImage = dragStateRef.current.selectedImage;
+          if (wasCutting && cutPath.length >= 3 && cutImage) {
             const sourceImg = cutImage.modifiedCanvas || cutImage.img;
 
             // Translate path to image-local coordinates
-            const localPath = dragStateRef.current.cutPath.map((pt) => {
+            const localPath = cutPath.map((pt) => {
               const localX = (pt.x - cutImage.position.x) / cutImage.scale + cutImage.img.width / 2;
               const localY = (pt.y - cutImage.position.y) / cutImage.scale + cutImage.img.height / 2;
               return new Pt(localX, localY);
             });
 
-            // Calculate bounding box of the cut path
-            const minX = Math.min(...localPath.map(pt => pt.x));
-            const maxX = Math.max(...localPath.map(pt => pt.x));
-            const minY = Math.min(...localPath.map(pt => pt.y));
-            const maxY = Math.max(...localPath.map(pt => pt.y));
-            const width = maxX - minX;
-            const height = maxY - minY;
+            // Calculate bounding box
+            const minX = Math.max(0, Math.min(...localPath.map(pt => pt.x)));
+            const maxX = Math.min(cutImage.img.width, Math.max(...localPath.map(pt => pt.x)));
+            const minY = Math.max(0, Math.min(...localPath.map(pt => pt.y)));
+            const maxY = Math.min(cutImage.img.height, Math.max(...localPath.map(pt => pt.y)));
+            const width = Math.ceil(maxX - minX);
+            const height = Math.ceil(maxY - minY);
 
-            // Create canvas for the cut piece
-            const cutCanvas = document.createElement("canvas");
-            cutCanvas.width = width;
-            cutCanvas.height = height;
-            const cutCtx = cutCanvas.getContext("2d")!;
+            if (width > 0 && height > 0) {
+              // Create canvas for the cut piece
+              const cutCanvas = document.createElement("canvas");
+              cutCanvas.width = width;
+              cutCanvas.height = height;
+              const cutCtx = cutCanvas.getContext("2d", { willReadFrequently: true })!;
 
-            // Draw the cut piece
-            cutCtx.save();
-            cutCtx.translate(-minX, -minY);
-            cutCtx.beginPath();
-            localPath.forEach((pt, i) => {
-              if (i === 0) cutCtx.moveTo(pt.x, pt.y);
-              else cutCtx.lineTo(pt.x, pt.y);
-            });
-            cutCtx.closePath();
-            cutCtx.clip();
-            cutCtx.drawImage(sourceImg, 0, 0);
-            cutCtx.restore();
+              // Draw the cut piece
+              cutCtx.save();
+              cutCtx.translate(-minX, -minY);
+              cutCtx.beginPath();
+              localPath.forEach((pt, i) => {
+                if (i === 0) cutCtx.moveTo(pt.x, pt.y);
+                else cutCtx.lineTo(pt.x, pt.y);
+              });
+              cutCtx.closePath();
+              cutCtx.clip();
+              cutCtx.drawImage(sourceImg, 0, 0);
+              cutCtx.restore();
 
-            // Erase from the original image
-            if (!cutImage.modifiedCanvas) {
-              cutImage.modifiedCanvas = document.createElement("canvas");
-              cutImage.modifiedCanvas.width = cutImage.img.width;
-              cutImage.modifiedCanvas.height = cutImage.img.height;
+              // Erase from the original image
+              if (!cutImage.modifiedCanvas) {
+                cutImage.modifiedCanvas = document.createElement("canvas");
+                cutImage.modifiedCanvas.width = cutImage.img.width;
+                cutImage.modifiedCanvas.height = cutImage.img.height;
+                const modCtx = cutImage.modifiedCanvas.getContext("2d")!;
+                modCtx.drawImage(sourceImg, 0, 0);
+              }
+
               const modCtx = cutImage.modifiedCanvas.getContext("2d")!;
-              modCtx.drawImage(sourceImg, 0, 0);
-              cutImage.modifiedCanvas = cutImage.modifiedCanvas;
-            }
+              modCtx.globalCompositeOperation = "destination-out";
+              modCtx.beginPath();
+              localPath.forEach((pt, i) => {
+                if (i === 0) modCtx.moveTo(pt.x, pt.y);
+                else modCtx.lineTo(pt.x, pt.y);
+              });
+              modCtx.closePath();
+              modCtx.fill();
+              modCtx.globalCompositeOperation = "source-over";
 
-            const modCtx = cutImage.modifiedCanvas.getContext("2d")!;
-            modCtx.globalCompositeOperation = "destination-out";
-            modCtx.beginPath();
-            localPath.forEach((pt, i) => {
-              if (i === 0) modCtx.moveTo(pt.x, pt.y);
-              else modCtx.lineTo(pt.x, pt.y);
-            });
-            modCtx.closePath();
-            modCtx.fill();
-            modCtx.globalCompositeOperation = "source-over";
-
-            // Force update
-            setImages((prev) => [...prev]);
-
-            // Create new image from the cut piece
-            const dataUrl = cutCanvas.toDataURL();
-            if (dataUrl && dataUrl.length > 100) {
+              // Create new image from the cut piece immediately
               const newImg = new Image();
               newImg.onload = () => {
                 // Calculate world position for the cut piece
@@ -384,9 +380,11 @@ function App() {
 
                 const newCollageImage = createCollageImage(newImg, worldPos);
                 newCollageImage.scale = cutImage.scale;
+
+                // Update both images at once
                 setImages((prev) => [...prev, newCollageImage]);
               };
-              newImg.src = dataUrl;
+              newImg.src = cutCanvas.toDataURL();
             }
           }
 
