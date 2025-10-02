@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import type { ThemeConfig } from "../themes/theme";
 
 type ToolMode = "move" | "resize" | "cut" | "erase";
 
@@ -9,6 +10,9 @@ interface SettingsPanelProps {
   onImageUpload: (file: File) => void;
   position: { x: number; y: number };
   onPositionChange: (position: { x: number; y: number }) => void;
+  theme: ThemeConfig;
+  onThemeChange: (themeId: string) => void;
+  availableThemes: ThemeConfig[];
 }
 
 export function SettingsPanel({
@@ -18,6 +22,9 @@ export function SettingsPanel({
   onImageUpload,
   position,
   onPositionChange,
+  theme,
+  onThemeChange,
+  availableThemes,
 }: SettingsPanelProps) {
   const isDraggingRef = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -69,13 +76,16 @@ export function SettingsPanel({
         left: `${position.x}px`,
         top: `${position.y}px`,
         transform: "translate(-50%, -50%)",
-        background: "rgba(0, 0, 0, 0.9)",
+        background: theme.panel.background,
         padding: "12px",
-        borderRadius: "10px",
-        border: "1px solid rgba(255, 255, 255, 0.3)",
+        borderRadius: theme.panel.borderRadius,
+        border: `${theme.panel.borderWidth} solid ${theme.panel.border}`,
+        boxShadow: theme.panel.shadow || theme.panel.glow || 'none',
         zIndex: 1000,
         minWidth: "280px",
         display: visible ? "block" : "none",
+        fontFamily: theme.panel.fontFamily,
+        fontSize: theme.panel.fontSize,
       }}
     >
       <h3
@@ -85,7 +95,7 @@ export function SettingsPanel({
           margin: "0 0 12px 0",
           fontSize: "1.1rem",
           fontWeight: "normal",
-          color: "#fff",
+          color: theme.panel.textColor,
           cursor: "grab",
           userSelect: "none",
         }}
@@ -99,12 +109,12 @@ export function SettingsPanel({
             display: "inline-block",
             cursor: "pointer",
             padding: "6px 12px",
-            backgroundColor: "#1a1a1a",
-            color: "#fff",
-            borderRadius: "6px",
+            backgroundColor: theme.panel.buttonBg,
+            color: theme.panel.textColor,
+            borderRadius: theme.panel.buttonRadius,
             textAlign: "center",
             fontSize: "0.95rem",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
+            border: `1px solid ${theme.panel.buttonBorder}`,
             width: "100%",
             boxSizing: "border-box",
           }}
@@ -120,7 +130,7 @@ export function SettingsPanel({
       </div>
 
       <div onClick={(e) => e.stopPropagation()}>
-        <p style={{ margin: "0 0 8px 0", fontSize: "0.9rem", color: "#999" }}>
+        <p style={{ margin: "0 0 8px 0", fontSize: "0.9rem", color: theme.panel.textSecondary }}>
           Mode:
         </p>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -130,10 +140,10 @@ export function SettingsPanel({
               onClick={() => onModeChange(mode)}
               style={{
                 padding: "6px 12px",
-                borderRadius: "6px",
-                background: currentMode === mode ? "#fff" : "#1a1a1a",
-                color: currentMode === mode ? "#000" : "#fff",
-                border: "1px solid rgba(255, 255, 255, 0.3)",
+                borderRadius: theme.panel.buttonRadius,
+                background: currentMode === mode ? theme.panel.buttonActiveBg : theme.panel.buttonBg,
+                color: currentMode === mode ? theme.panel.buttonActiveText : theme.panel.textColor,
+                border: `1px solid ${theme.panel.buttonBorder}`,
                 cursor: "pointer",
                 fontSize: "0.95rem",
                 textTransform: "capitalize",
@@ -149,9 +159,9 @@ export function SettingsPanel({
         style={{
           marginTop: "12px",
           paddingTop: "12px",
-          borderTop: "1px solid rgba(255, 255, 255, 0.2)",
-          fontSize: "0.85rem",
-          color: "#999",
+          borderTop: `1px solid ${theme.panel.border}`,
+          fontSize: "0.75rem",
+          color: theme.panel.textSecondary,
         }}
       >
         <p style={{ margin: "0" }}>Press Shift to toggle</p>

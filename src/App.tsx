@@ -5,6 +5,8 @@ import type { CollageImage, ToolMode } from "./types/Image";
 import type { ViewportTransform } from "./utils/canvasHelpers";
 import { screenToWorld, worldToScreen } from "./utils/canvasHelpers";
 import { loadImageFromFile, createCollageImage, isPointInImage } from "./utils/imageHelpers";
+import { themes } from "./themes/theme";
+import type { ThemeConfig } from "./themes/theme";
 import "./App.css";
 
 function App() {
@@ -16,6 +18,7 @@ function App() {
   const [currentMode, setCurrentMode] = useState<ToolMode>("move");
   const [settingsVisible, setSettingsVisible] = useState(true);
   const [settingsPosition, setSettingsPosition] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 4 });
+  const [currentTheme, setCurrentTheme] = useState<ThemeConfig>(themes.find(t => t.id === 'newspaper') || themes[0]);
 
   const mousePositionRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const currentModeRef = useRef<ToolMode>(currentMode);
@@ -137,8 +140,16 @@ function App() {
         const viewport = viewportRef.current;
         const ctx = form.ctx;
 
-        // Clear canvas
-        form.fill("#000000").rect([[0, 0], [space.size]]);
+        // Clear canvas with theme background
+        if (currentTheme.canvas.gradient) {
+          const gradient = ctx.createLinearGradient(0, 0, space.width, space.height);
+          gradient.addColorStop(0, currentTheme.canvas.gradient.from);
+          gradient.addColorStop(1, currentTheme.canvas.gradient.to);
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, space.width, space.height);
+        } else {
+          form.fill(currentTheme.canvas.background).rect([[0, 0], [space.size]]);
+        }
 
         // Draw images
         ctx.save();
@@ -163,9 +174,70 @@ function App() {
 
         ctx.restore();
 
+        // Draw overlay effects
+        if (currentTheme.canvas.overlay && currentTheme.canvas.overlay.type !== 'none') {
+          const overlay = currentTheme.canvas.overlay;
+          ctx.globalAlpha = overlay.opacity;
+
+          if (overlay.type === 'scanlines') {
+            ctx.strokeStyle = overlay.color || '#ffffff';
+            ctx.lineWidth = 1;
+            for (let y = 0; y < space.height; y += 4) {
+              ctx.beginPath();
+              ctx.moveTo(0, y);
+              ctx.lineTo(space.width, y);
+              ctx.stroke();
+            }
+          } else if (overlay.type === 'grid') {
+            ctx.strokeStyle = overlay.color || '#ffffff';
+            ctx.lineWidth = 0.5;
+            const gridSize = 50;
+            for (let x = 0; x < space.width; x += gridSize) {
+              ctx.beginPath();
+              ctx.moveTo(x, 0);
+              ctx.lineTo(x, space.height);
+              ctx.stroke();
+            }
+            for (let y = 0; y < space.height; y += gridSize) {
+              ctx.beginPath();
+              ctx.moveTo(0, y);
+              ctx.lineTo(space.width, y);
+              ctx.stroke();
+            }
+          } else if (overlay.type === 'grain') {
+            const imageData = ctx.getImageData(0, 0, space.width, space.height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+              const noise = Math.random() * 50 - 25;
+              data[i] += noise;
+              data[i + 1] += noise;
+              data[i + 2] += noise;
+            }
+            ctx.putImageData(imageData, 0, 0);
+          } else if (overlay.type === 'noise') {
+            ctx.fillStyle = overlay.color || '#ffffff';
+            for (let i = 0; i < 2000; i++) {
+              const x = Math.random() * space.width;
+              const y = Math.random() * space.height;
+              ctx.fillRect(x, y, 1, 1);
+            }
+          } else if (overlay.type === 'vignette') {
+            const gradient = ctx.createRadialGradient(
+              space.width / 2, space.height / 2, 0,
+              space.width / 2, space.height / 2, Math.max(space.width, space.height) * 0.7
+            );
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, space.width, space.height);
+          }
+
+          ctx.globalAlpha = 1;
+        }
+
         // Draw cut path in screen space
         if (currentModeRef.current === "cut" && dragStateRef.current.cutPath.length > 0) {
-          form.stroke("#ffffff", 2).fill("rgba(255, 255, 255, 0.1)");
+          form.stroke(currentTheme.colors.line, 2).fill(currentTheme.colors.lineFill);
           if (dragStateRef.current.cutPath.length > 2) {
             const screenPath = dragStateRef.current.cutPath.map((pt) =>
               worldToScreen(pt, viewport)
@@ -184,7 +256,7 @@ function App() {
         // Draw erase brush cursor in erase mode
         if (currentModeRef.current === "erase") {
           const brushSize = dragStateRef.current.eraseBrushSize;
-          form.stroke("#ffffff", 2).fill("rgba(255, 255, 255, 0.1)");
+          form.stroke(currentTheme.colors.cursor, 2).fill(currentTheme.colors.lineFill);
           form.circle([space.pointer, brushSize]);
         }
 
@@ -430,7 +502,7 @@ function App() {
       space.dispose();
       canvasRef.current?.removeEventListener("wheel", handleWheel);
     };
-  }, []);
+  }, [currentTheme]);
 
   const handleImageUpload = async (file: File) => {
     try {
@@ -447,6 +519,13 @@ function App() {
     }
   };
 
+  const handleThemeChange = (themeId: string) => {
+    const theme = themes.find(t => t.id === themeId);
+    if (theme) {
+      setCurrentTheme(theme);
+    }
+  };
+
   const getCursor = () => {
     switch (currentMode) {
       case "move": return "move";
@@ -458,7 +537,7 @@ function App() {
   };
 
   return (
-    <div style={{ width: "100vw", height: "100vh", overflow: "hidden" }}>
+    <div style={{ width: "100vw", height: "100vh", overflow: "hidden", background: currentTheme.canvas.background }}>
       <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%", cursor: getCursor() }} />
       <SettingsPanel
         visible={settingsVisible}
@@ -467,6 +546,9 @@ function App() {
         onImageUpload={handleImageUpload}
         position={settingsPosition}
         onPositionChange={setSettingsPosition}
+        theme={currentTheme}
+        onThemeChange={handleThemeChange}
+        availableThemes={themes}
       />
     </div>
   );
