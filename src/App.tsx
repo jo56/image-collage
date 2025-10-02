@@ -15,7 +15,11 @@ function App() {
   const [images, setImages] = useState<CollageImage[]>([]);
   const [currentMode, setCurrentMode] = useState<ToolMode>("move");
   const [settingsVisible, setSettingsVisible] = useState(true);
-  const [settingsPosition, setSettingsPosition] = useState({ x: 20, y: 20 });
+  const [settingsPosition, setSettingsPosition] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+
+  const mousePositionRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const currentModeRef = useRef<ToolMode>(currentMode);
+  const imagesRef = useRef<CollageImage[]>(images);
 
   const viewportRef = useRef<ViewportTransform>({
     offset: new Pt(0, 0),
@@ -51,6 +55,41 @@ function App() {
   });
 
   useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mousePositionRef.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Shift") {
+        e.preventDefault();
+        setSettingsVisible((prev) => {
+          if (!prev) {
+            // Reappearing - position at mouse cursor
+            setSettingsPosition(mousePositionRef.current);
+          }
+          return !prev;
+        });
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    currentModeRef.current = currentMode;
+  }, [currentMode]);
+
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  useEffect(() => {
     if (!canvasRef.current) return;
 
     const space = new CanvasSpace(canvasRef.current);
@@ -59,7 +98,35 @@ function App() {
     spaceRef.current = space;
     formRef.current = form;
 
-    space.setup({ bgcolor: "#f0f0f0", resize: true, retina: true });
+    space.setup({ bgcolor: "#000000", resize: true, retina: true });
+
+    // Erase function
+    const eraseAtPoint = (img: CollageImage, worldPt: Pt, viewportScale: number) => {
+      // Ensure the image has a modified canvas
+      if (!img.modifiedCanvas) {
+        img.modifiedCanvas = document.createElement("canvas");
+        img.modifiedCanvas.width = img.img.width;
+        img.modifiedCanvas.height = img.img.height;
+        const ctx = img.modifiedCanvas.getContext("2d")!;
+        ctx.drawImage(img.img, 0, 0);
+      }
+
+      // Convert world point to image-local coordinates
+      const localX = (worldPt.x - img.position.x) / img.scale + img.img.width / 2;
+      const localY = (worldPt.y - img.position.y) / img.scale + img.img.height / 2;
+
+      // Erase at this point
+      const ctx = img.modifiedCanvas.getContext("2d")!;
+      ctx.globalCompositeOperation = "destination-out";
+      const brushSize = dragStateRef.current.eraseBrushSize / img.scale;
+      ctx.beginPath();
+      ctx.arc(localX, localY, brushSize, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+
+      // Force re-render
+      setImages((prev) => [...prev]);
+    };
 
     // Animation loop
     space.add({
@@ -70,29 +137,13 @@ function App() {
         const ctx = form.ctx;
 
         // Clear canvas
-        form.fill("#f0f0f0").rect([[0, 0], [space.size]]);
+        form.fill("#000000").rect([[0, 0], [space.size]]);
 
-        // Draw grid
+        // Draw images
         ctx.save();
         ctx.translate(viewport.offset.x, viewport.offset.y);
         ctx.scale(viewport.scale, viewport.scale);
-
-        const gridSize = 50;
-        const startX = Math.floor(-viewport.offset.x / viewport.scale / gridSize) * gridSize;
-        const startY = Math.floor(-viewport.offset.y / viewport.scale / gridSize) * gridSize;
-        const endX = startX + space.width / viewport.scale + gridSize;
-        const endY = startY + space.height / viewport.scale + gridSize;
-
-        form.stroke("#ddd", 1 / viewport.scale);
-        for (let x = startX; x <= endX; x += gridSize) {
-          form.line([new Pt(x, startY), new Pt(x, endY)]);
-        }
-        for (let y = startY; y <= endY; y += gridSize) {
-          form.line([new Pt(startX, y), new Pt(endX, y)]);
-        }
-
-        // Draw images
-        images.forEach((img) => {
+        imagesRef.current.forEach((img) => {
           const x = img.position.x - (img.img.width * img.scale) / 2;
           const y = img.position.y - (img.img.height * img.scale) / 2;
 
@@ -106,8 +157,20 @@ function App() {
             img.img.height * img.scale
           );
 
+          // Draw selection highlight for selected images
+          const isSelected = dragStateRef.current.selectedImage?.id === img.id;
+          if (isSelected) {
+            const hw = (img.img.width * img.scale) / 2;
+            const hh = (img.img.height * img.scale) / 2;
+            form.stroke("#00ff00", 3 / viewport.scale);
+            form.rect([
+              [img.position.x - hw, img.position.y - hh],
+              [img.position.x + hw, img.position.y + hh],
+            ]);
+          }
+
           // Draw resize handles in resize mode
-          if (currentMode === "resize" && dragStateRef.current.selectedImage?.id === img.id) {
+          if (currentModeRef.current === "resize" && isSelected) {
             const handleSize = 10 / viewport.scale;
             const hw = (img.img.width * img.scale) / 2;
             const hh = (img.img.height * img.scale) / 2;
@@ -137,7 +200,7 @@ function App() {
         ctx.restore();
 
         // Draw cut path in screen space
-        if (currentMode === "cut" && dragStateRef.current.cutPath.length > 0) {
+        if (currentModeRef.current === "cut" && dragStateRef.current.cutPath.length > 0) {
           form.stroke("#ff0000", 2).fill("rgba(255, 0, 0, 0.1)");
           if (dragStateRef.current.cutPath.length > 2) {
             const screenPath = dragStateRef.current.cutPath.map((pt) =>
@@ -155,14 +218,12 @@ function App() {
         }
 
         // Draw erase brush cursor in erase mode
-        if (currentMode === "erase") {
+        if (currentModeRef.current === "erase") {
           const brushSize = dragStateRef.current.eraseBrushSize;
           form.stroke("#ff0000", 2).fill("rgba(255, 0, 0, 0.1)");
           form.circle([space.pointer, brushSize]);
         }
 
-        // Draw mode indicator
-        form.fill("#333").font(14).text([new Pt(10, space.height - 10)], `Mode: ${currentMode}`);
       },
 
       action: (type, px, py) => {
@@ -172,20 +233,20 @@ function App() {
 
         if (type === "down") {
           // Find clicked image (reverse order to get top image)
-          const clickedImage = [...images].reverse().find((img) =>
+          const clickedImage = [...imagesRef.current].reverse().find((img) =>
             isPointInImage(worldPointer, img)
           );
 
-          if (currentMode === "move" && clickedImage) {
+          if (currentModeRef.current === "move" && clickedImage) {
             dragStateRef.current = {
               ...dragStateRef.current,
               isDraggingImage: true,
               selectedImage: clickedImage,
               imageStartPos: clickedImage.position.clone(),
-              dragStart: pointer.clone(),
+              dragStart: worldPointer.clone(),
               imageStartScale: clickedImage.scale,
             };
-          } else if (currentMode === "resize" && clickedImage) {
+          } else if (currentModeRef.current === "resize" && clickedImage) {
             // Check if clicking on a resize handle
             const handleSize = 10 / viewport.scale;
             const hw = (clickedImage.img.width * clickedImage.scale) / 2;
@@ -223,7 +284,7 @@ function App() {
                 imageStartScale: clickedImage.scale,
               };
             }
-          } else if (currentMode === "cut" && clickedImage) {
+          } else if (currentModeRef.current === "cut" && clickedImage) {
             // Start drawing cut path
             dragStateRef.current = {
               ...dragStateRef.current,
@@ -232,7 +293,7 @@ function App() {
               cutPath: [worldPointer.clone()],
               imageStartScale: clickedImage.scale,
             };
-          } else if (currentMode === "erase" && clickedImage) {
+          } else if (currentModeRef.current === "erase" && clickedImage) {
             // Start erasing
             dragStateRef.current = {
               ...dragStateRef.current,
@@ -256,13 +317,12 @@ function App() {
 
         if (type === "move") {
           if (dragStateRef.current.isDraggingImage && dragStateRef.current.selectedImage && dragStateRef.current.dragStart && dragStateRef.current.imageStartPos) {
-            const delta = pointer.$subtract(dragStateRef.current.dragStart);
-            const worldDelta = new Pt(delta.x / viewport.scale, delta.y / viewport.scale);
+            const delta = worldPointer.$subtract(dragStateRef.current.dragStart);
 
             setImages((prev) =>
               prev.map((img) =>
                 img.id === dragStateRef.current.selectedImage?.id
-                  ? { ...img, position: dragStateRef.current.imageStartPos!.$add(worldDelta) }
+                  ? { ...img, position: dragStateRef.current.imageStartPos!.$add(delta) }
                   : img
               )
             );
@@ -362,34 +422,6 @@ function App() {
       },
     });
 
-    // Erase function
-    const eraseAtPoint = (img: CollageImage, worldPt: Pt, viewportScale: number) => {
-      // Ensure the image has a modified canvas
-      if (!img.modifiedCanvas) {
-        img.modifiedCanvas = document.createElement("canvas");
-        img.modifiedCanvas.width = img.img.width;
-        img.modifiedCanvas.height = img.img.height;
-        const ctx = img.modifiedCanvas.getContext("2d")!;
-        ctx.drawImage(img.img, 0, 0);
-      }
-
-      // Convert world point to image-local coordinates
-      const localX = (worldPt.x - img.position.x) / img.scale + img.img.width / 2;
-      const localY = (worldPt.y - img.position.y) / img.scale + img.img.height / 2;
-
-      // Erase at this point
-      const ctx = img.modifiedCanvas.getContext("2d")!;
-      ctx.globalCompositeOperation = "destination-out";
-      const brushSize = dragStateRef.current.eraseBrushSize / img.scale;
-      ctx.beginPath();
-      ctx.arc(localX, localY, brushSize, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalCompositeOperation = "source-over";
-
-      // Force re-render
-      setImages((prev) => [...prev]);
-    };
-
     // Zoom handling
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -408,28 +440,13 @@ function App() {
 
     canvasRef.current.addEventListener("wheel", handleWheel);
 
-    // Keyboard handling
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Shift") {
-        if (settingsVisible) {
-          setSettingsVisible(false);
-        } else {
-          setSettingsVisible(true);
-          setSettingsPosition({ x: e.clientX + 10, y: e.clientY + 10 });
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
     space.play();
 
     return () => {
       space.dispose();
       canvasRef.current?.removeEventListener("wheel", handleWheel);
-      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [images, currentMode, settingsVisible]);
+  }, []);
 
   const handleImageUpload = async (file: File) => {
     try {
@@ -446,15 +463,26 @@ function App() {
     }
   };
 
+  const getCursor = () => {
+    switch (currentMode) {
+      case "move": return "move";
+      case "resize": return "nwse-resize";
+      case "cut": return "crosshair";
+      case "erase": return "crosshair";
+      default: return "default";
+    }
+  };
+
   return (
     <div style={{ width: "100vw", height: "100vh", overflow: "hidden" }}>
-      <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
+      <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%", cursor: getCursor() }} />
       <SettingsPanel
         visible={settingsVisible}
-        position={settingsPosition}
         currentMode={currentMode}
         onModeChange={setCurrentMode}
         onImageUpload={handleImageUpload}
+        position={settingsPosition}
+        onPositionChange={setSettingsPosition}
       />
     </div>
   );

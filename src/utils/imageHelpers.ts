@@ -21,11 +21,15 @@ export function loadImageFromFile(file: File): Promise<HTMLImageElement> {
 }
 
 export function createCollageImage(img: HTMLImageElement, position: Pt): CollageImage {
+  // Start with a smaller scale so images aren't overwhelming
+  const maxDimension = Math.max(img.width, img.height);
+  const initialScale = maxDimension > 850 ? 850 / maxDimension : 1;
+
   return {
     id: `img-${Date.now()}-${Math.random()}`,
     img,
     position,
-    scale: 1,
+    scale: initialScale,
     rotation: 0,
   };
 }
