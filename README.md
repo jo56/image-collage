@@ -1,4 +1,4 @@
-# Image Collage
+# Image Collage 2NW
 
 Simple tool for creating collages out of multiple images. The images can be manipulated and cut apart like regular photographs. Try to see what other kinds of images you can create.
 
