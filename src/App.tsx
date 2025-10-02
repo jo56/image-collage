@@ -510,15 +510,22 @@ function App() {
       e.preventDefault();
       const viewport = viewportRef.current;
       const pointer = new Pt(e.offsetX, e.offsetY);
-      const worldPointerBefore = screenToWorld(pointer, viewport);
 
+      // Get the world position under the mouse before zoom
+      const worldPointer = screenToWorld(pointer, viewport);
+
+      // Apply zoom
       const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const oldScale = viewport.scale;
       viewport.scale *= zoomFactor;
       viewport.scale = Math.max(0.1, Math.min(5, viewport.scale));
 
-      const worldPointerAfter = screenToWorld(pointer, viewport);
-      const worldDelta = worldPointerBefore.$subtract(worldPointerAfter);
-      viewport.offset = viewport.offset.$add(worldDelta.$multiply(viewport.scale));
+      // Adjust offset to keep the world point under the mouse cursor fixed
+      // worldPoint = (pointer - offset) / scale
+      // We want: (pointer - newOffset) / newScale = worldPoint
+      // So: newOffset = pointer - worldPoint * newScale
+      viewport.offset.x = pointer.x - worldPointer.x * viewport.scale;
+      viewport.offset.y = pointer.y - worldPointer.y * viewport.scale;
     };
 
     canvasRef.current.addEventListener("wheel", handleWheel);
