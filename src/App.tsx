@@ -516,7 +516,6 @@ function App() {
 
       // Apply zoom
       const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-      const oldScale = viewport.scale;
       viewport.scale *= zoomFactor;
       viewport.scale = Math.max(0.1, Math.min(5, viewport.scale));
 
