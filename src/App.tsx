@@ -99,6 +99,7 @@ function App() {
     formRef.current = form;
 
     space.setup({ bgcolor: "#000000", resize: true, retina: true });
+    space.bindMouse().bindTouch();
 
     // Erase function
     const eraseAtPoint = (img: CollageImage, worldPt: Pt, viewportScale: number) => {
@@ -230,6 +231,8 @@ function App() {
         const viewport = viewportRef.current;
         const pointer = new Pt(px, py);
         const worldPointer = screenToWorld(pointer, viewport);
+
+        console.log('Canvas action:', type, 'mode:', currentModeRef.current, 'images:', imagesRef.current.length);
 
         if (type === "down") {
           // Find clicked image (reverse order to get top image)

@@ -64,7 +64,6 @@ export function SettingsPanel({
 
   return (
     <div
-      onClick={(e) => e.stopPropagation()}
       style={{
         position: "fixed",
         left: `${position.x}px`,
@@ -77,11 +76,11 @@ export function SettingsPanel({
         zIndex: 1000,
         minWidth: "280px",
         display: visible ? "block" : "none",
-        pointerEvents: visible ? "auto" : "none",
       }}
     >
       <h3
         onMouseDown={handleMouseDown}
+        onClick={(e) => e.stopPropagation()}
         style={{
           margin: "0 0 12px 0",
           fontSize: "1.1rem",
@@ -94,7 +93,7 @@ export function SettingsPanel({
         Collage Tools
       </h3>
 
-      <div style={{ marginBottom: "12px" }}>
+      <div style={{ marginBottom: "12px" }} onClick={(e) => e.stopPropagation()}>
         <label
           style={{
             display: "inline-block",
@@ -120,7 +119,7 @@ export function SettingsPanel({
         </label>
       </div>
 
-      <div>
+      <div onClick={(e) => e.stopPropagation()}>
         <p style={{ margin: "0 0 8px 0", fontSize: "0.9rem", color: "#9ca3af" }}>
           Mode:
         </p>
