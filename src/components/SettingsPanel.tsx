@@ -98,7 +98,7 @@ export function SettingsPanel({
           userSelect: "none",
         }}
       >
-        Image Collage 2NW
+        Image Collage
       </h3>
 
       <div style={{ marginBottom: "12px" }} onClick={(e) => e.stopPropagation()}>
