@@ -157,7 +157,7 @@ export const themes: ThemeConfig[] = [
     name: 'Sunset',
     canvas: {
       background: '#ff6b35',
-      gradient: { from: '#ff6b35', to: '#f7931e', direction: 'to bottom' },
+      gradient: { from: '#ff6b35', to: '#f7931e' },
       overlay: { type: 'none', opacity: 0 },
     },
     colors: {

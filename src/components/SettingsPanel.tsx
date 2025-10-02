@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect } from "react";
 import type { ThemeConfig } from "../themes/theme";
 
 type ToolMode = "move" | "resize" | "cut" | "erase";
@@ -23,8 +23,6 @@ export function SettingsPanel({
   position,
   onPositionChange,
   theme,
-  onThemeChange,
-  availableThemes,
 }: SettingsPanelProps) {
   const isDraggingRef = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });

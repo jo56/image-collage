@@ -110,7 +110,7 @@ function App() {
     space.bindMouse().bindTouch();
 
     // Erase function
-    const eraseAtPoint = (img: CollageImage, worldPt: Pt, viewportScale: number) => {
+    const eraseAtPoint = (img: CollageImage, worldPt: Pt) => {
       // Ensure the image has a modified canvas
       if (!img.modifiedCanvas) {
         img.modifiedCanvas = document.createElement("canvas");
@@ -154,7 +154,7 @@ function App() {
           ctx.fillStyle = gradient;
           ctx.fillRect(0, 0, space.width, space.height);
         } else {
-          form.fill(theme.canvas.background).rect([[0, 0], [space.size]]);
+          form.fill(theme.canvas.background).rect([[0, 0], space.size]);
         }
 
         // Draw images
@@ -263,7 +263,7 @@ function App() {
         if (currentModeRef.current === "erase") {
           const brushSize = dragStateRef.current.eraseBrushSize;
           form.stroke(theme.colors.cursor, 2).fill(theme.colors.lineFill);
-          form.circle([space.pointer, brushSize]);
+          form.circle(Circle.fromCenter(space.pointer, brushSize));
         }
 
       },
@@ -379,7 +379,6 @@ function App() {
         if (type === "up" || type === "drop") {
           const wasCutting = dragStateRef.current.isCutting;
           const cutPath = dragStateRef.current.cutPath;
-          const cutImage = dragStateRef.current.selectedImage;
 
           // Sync state after dragging or resizing
           if (dragStateRef.current.isDraggingImage || dragStateRef.current.isResizing) {
