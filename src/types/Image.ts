@@ -1,4 +1,4 @@
-import { Pt } from "pts";
+import type { Pt } from "pts";
 
 export interface CollageImage {
   id: string;

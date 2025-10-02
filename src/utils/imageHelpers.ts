@@ -1,5 +1,5 @@
-import { CollageImage } from "../types/Image";
-import { Pt } from "pts";
+import type { CollageImage } from "../types/Image";
+import type { Pt } from "pts";
 
 export function loadImageFromFile(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {

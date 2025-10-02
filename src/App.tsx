@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { CanvasSpace, CanvasForm, Pt } from "pts";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { CollageImage, ToolMode } from "./types/Image";
-import { ViewportTransform, screenToWorld, worldToScreen } from "./utils/canvasHelpers";
+import type { CollageImage, ToolMode } from "./types/Image";
+import type { ViewportTransform } from "./utils/canvasHelpers";
+import { screenToWorld, worldToScreen } from "./utils/canvasHelpers";
 import { loadImageFromFile, createCollageImage, isPointInImage } from "./utils/imageHelpers";
 import "./App.css";
 
