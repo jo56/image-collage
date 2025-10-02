@@ -100,7 +100,7 @@ export function SettingsPanel({
           userSelect: "none",
         }}
       >
-        Collage Tools
+        Photo Collage
       </h3>
 
       <div style={{ marginBottom: "12px" }} onClick={(e) => e.stopPropagation()}>

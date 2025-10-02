@@ -23,6 +23,7 @@ function App() {
   const mousePositionRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const currentModeRef = useRef<ToolMode>(currentMode);
   const imagesRef = useRef<CollageImage[]>(images);
+  const currentThemeRef = useRef<ThemeConfig>(currentTheme);
 
   const viewportRef = useRef<ViewportTransform>({
     offset: new Pt(0, 0),
@@ -93,6 +94,10 @@ function App() {
   }, [images]);
 
   useEffect(() => {
+    currentThemeRef.current = currentTheme;
+  }, [currentTheme]);
+
+  useEffect(() => {
     if (!canvasRef.current) return;
 
     const space = new CanvasSpace(canvasRef.current);
@@ -101,7 +106,7 @@ function App() {
     spaceRef.current = space;
     formRef.current = form;
 
-    space.setup({ bgcolor: "#000000", resize: true, retina: true });
+    space.setup({ bgcolor: currentTheme.canvas.background, resize: true, retina: true });
     space.bindMouse().bindTouch();
 
     // Erase function
@@ -141,14 +146,15 @@ function App() {
         const ctx = form.ctx;
 
         // Clear canvas with theme background
-        if (currentTheme.canvas.gradient) {
+        const theme = currentThemeRef.current;
+        if (theme.canvas.gradient) {
           const gradient = ctx.createLinearGradient(0, 0, space.width, space.height);
-          gradient.addColorStop(0, currentTheme.canvas.gradient.from);
-          gradient.addColorStop(1, currentTheme.canvas.gradient.to);
+          gradient.addColorStop(0, theme.canvas.gradient.from);
+          gradient.addColorStop(1, theme.canvas.gradient.to);
           ctx.fillStyle = gradient;
           ctx.fillRect(0, 0, space.width, space.height);
         } else {
-          form.fill(currentTheme.canvas.background).rect([[0, 0], [space.size]]);
+          form.fill(theme.canvas.background).rect([[0, 0], [space.size]]);
         }
 
         // Draw images
@@ -175,8 +181,8 @@ function App() {
         ctx.restore();
 
         // Draw overlay effects
-        if (currentTheme.canvas.overlay && currentTheme.canvas.overlay.type !== 'none') {
-          const overlay = currentTheme.canvas.overlay;
+        if (theme.canvas.overlay && theme.canvas.overlay.type !== 'none') {
+          const overlay = theme.canvas.overlay;
           ctx.globalAlpha = overlay.opacity;
 
           if (overlay.type === 'scanlines') {
@@ -237,7 +243,7 @@ function App() {
 
         // Draw cut path in screen space
         if (currentModeRef.current === "cut" && dragStateRef.current.cutPath.length > 0) {
-          form.stroke(currentTheme.colors.line, 2).fill(currentTheme.colors.lineFill);
+          form.stroke(theme.colors.line, 2).fill(theme.colors.lineFill);
           if (dragStateRef.current.cutPath.length > 2) {
             const screenPath = dragStateRef.current.cutPath.map((pt) =>
               worldToScreen(pt, viewport)
@@ -256,7 +262,7 @@ function App() {
         // Draw erase brush cursor in erase mode
         if (currentModeRef.current === "erase") {
           const brushSize = dragStateRef.current.eraseBrushSize;
-          form.stroke(currentTheme.colors.cursor, 2).fill(currentTheme.colors.lineFill);
+          form.stroke(theme.colors.cursor, 2).fill(theme.colors.lineFill);
           form.circle([space.pointer, brushSize]);
         }
 
@@ -502,7 +508,7 @@ function App() {
       space.dispose();
       canvasRef.current?.removeEventListener("wheel", handleWheel);
     };
-  }, [currentTheme]);
+  }, []);
 
   const handleImageUpload = async (file: File) => {
     try {

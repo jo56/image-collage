@@ -127,7 +127,7 @@ export const themes: ThemeConfig[] = [
     id: 'newspaper',
     name: 'Newsprint',
     canvas: {
-      background: '#000000',
+      background: '#f4f1ea',
       overlay: { type: 'none', opacity: 0 },
     },
     colors: {
