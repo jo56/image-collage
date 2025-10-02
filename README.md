@@ -1,4 +1,6 @@
-Simple tool for creating collages out of multiple images. The images can be cut apart like regular photographs. 
+# Image Collage
+
+Simple tool for creating collages out of multiple images. The images can be manipulated and cut apart like regular photographs. Try to see what other kinds of images you can create.
 
 ## Getting Started
 
