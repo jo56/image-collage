@@ -1,7 +1,7 @@
 {
-  "name": "Photo Collage",
+  "name": "Image Collage",
   "short_name": "Collage",
-  "description": "Create beautiful photo collages with easy-to-use tools",
+  "description": "Create beautiful image collages with easy-to-use tools",
   "icons": [
     {
       "src": "/favicon-192.png",
