@@ -69,10 +69,10 @@ export function SettingsPanel({
         left: `${position.x}px`,
         top: `${position.y}px`,
         transform: "translate(-50%, -50%)",
-        background: "rgba(17, 24, 39, 0.95)",
+        background: "rgba(0, 0, 0, 0.9)",
         padding: "12px",
         borderRadius: "10px",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+        border: "1px solid rgba(255, 255, 255, 0.3)",
         zIndex: 1000,
         minWidth: "280px",
         display: visible ? "block" : "none",
@@ -99,12 +99,12 @@ export function SettingsPanel({
             display: "inline-block",
             cursor: "pointer",
             padding: "6px 12px",
-            backgroundColor: "#374151",
+            backgroundColor: "#1a1a1a",
             color: "#fff",
             borderRadius: "6px",
             textAlign: "center",
             fontSize: "0.95rem",
-            border: "none",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
             width: "100%",
             boxSizing: "border-box",
           }}
@@ -120,7 +120,7 @@ export function SettingsPanel({
       </div>
 
       <div onClick={(e) => e.stopPropagation()}>
-        <p style={{ margin: "0 0 8px 0", fontSize: "0.9rem", color: "#9ca3af" }}>
+        <p style={{ margin: "0 0 8px 0", fontSize: "0.9rem", color: "#999" }}>
           Mode:
         </p>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -131,9 +131,9 @@ export function SettingsPanel({
               style={{
                 padding: "6px 12px",
                 borderRadius: "6px",
-                background: currentMode === mode ? "#06b6d4" : "#374151",
-                color: "#fff",
-                border: "none",
+                background: currentMode === mode ? "#fff" : "#1a1a1a",
+                color: currentMode === mode ? "#000" : "#fff",
+                border: "1px solid rgba(255, 255, 255, 0.3)",
                 cursor: "pointer",
                 fontSize: "0.95rem",
                 textTransform: "capitalize",
@@ -149,9 +149,9 @@ export function SettingsPanel({
         style={{
           marginTop: "12px",
           paddingTop: "12px",
-          borderTop: "1px solid #374151",
+          borderTop: "1px solid rgba(255, 255, 255, 0.2)",
           fontSize: "0.85rem",
-          color: "#6b7280",
+          color: "#999",
         }}
       >
         <p style={{ margin: "0" }}>Press Shift to toggle</p>

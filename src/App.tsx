@@ -158,42 +158,14 @@ function App() {
             img.img.height * img.scale
           );
 
-          // Draw selection highlight for selected images
-          const isSelected = dragStateRef.current.selectedImage?.id === img.id;
-
-          // Draw resize handles in resize mode
-          if (currentModeRef.current === "resize" && isSelected) {
-            const handleSize = 10 / viewport.scale;
-            const hw = (img.img.width * img.scale) / 2;
-            const hh = (img.img.height * img.scale) / 2;
-
-            form.fill("#007bff").stroke("#fff", 2 / viewport.scale);
-
-            // Corner handles
-            form.rect([
-              [img.position.x - hw - handleSize / 2, img.position.y - hh - handleSize / 2],
-              [img.position.x - hw + handleSize / 2, img.position.y - hh + handleSize / 2],
-            ]);
-            form.rect([
-              [img.position.x + hw - handleSize / 2, img.position.y - hh - handleSize / 2],
-              [img.position.x + hw + handleSize / 2, img.position.y - hh + handleSize / 2],
-            ]);
-            form.rect([
-              [img.position.x - hw - handleSize / 2, img.position.y + hh - handleSize / 2],
-              [img.position.x - hw + handleSize / 2, img.position.y + hh + handleSize / 2],
-            ]);
-            form.rect([
-              [img.position.x + hw - handleSize / 2, img.position.y + hh - handleSize / 2],
-              [img.position.x + hw + handleSize / 2, img.position.y + hh + handleSize / 2],
-            ]);
-          }
+          // No selection highlights needed - images are always visible
         });
 
         ctx.restore();
 
         // Draw cut path in screen space
         if (currentModeRef.current === "cut" && dragStateRef.current.cutPath.length > 0) {
-          form.stroke("#ff0000", 2).fill("rgba(255, 0, 0, 0.1)");
+          form.stroke("#ffffff", 2).fill("rgba(255, 255, 255, 0.1)");
           if (dragStateRef.current.cutPath.length > 2) {
             const screenPath = dragStateRef.current.cutPath.map((pt) =>
               worldToScreen(pt, viewport)
@@ -212,7 +184,7 @@ function App() {
         // Draw erase brush cursor in erase mode
         if (currentModeRef.current === "erase") {
           const brushSize = dragStateRef.current.eraseBrushSize;
-          form.stroke("#ff0000", 2).fill("rgba(255, 0, 0, 0.1)");
+          form.stroke("#ffffff", 2).fill("rgba(255, 255, 255, 0.1)");
           form.circle([space.pointer, brushSize]);
         }
 
@@ -223,7 +195,7 @@ function App() {
         const pointer = new Pt(px, py);
         const worldPointer = screenToWorld(pointer, viewport);
 
-        console.log('Canvas action:', type, 'mode:', currentModeRef.current, 'images:', imagesRef.current.length);
+        console.log('Canvas action:', type, 'mode:', currentModeRef.current, 'images:', imagesRef.current.length, 'cutPath:', dragStateRef.current.cutPath.length);
 
         if (type === "down") {
           // Find clicked image (reverse order to get top image)
@@ -232,6 +204,12 @@ function App() {
           );
 
           if (currentModeRef.current === "move" && clickedImage) {
+            // Bring image to front
+            setImages((prev) => {
+              const filtered = prev.filter(img => img.id !== clickedImage.id);
+              return [...filtered, clickedImage];
+            });
+
             // Only mark as dragging, don't move yet
             dragStateRef.current = {
               ...dragStateRef.current,
@@ -242,62 +220,28 @@ function App() {
             };
           } else if (currentModeRef.current === "resize" && clickedImage) {
             // Check if clicking on a resize handle
-            const handleSize = 10 / viewport.scale;
-            const hw = (clickedImage.img.width * clickedImage.scale) / 2;
-            const hh = (clickedImage.img.height * clickedImage.scale) / 2;
-
-            const corners = [
-              { name: "tl", x: clickedImage.position.x - hw, y: clickedImage.position.y - hh },
-              { name: "tr", x: clickedImage.position.x + hw, y: clickedImage.position.y - hh },
-              { name: "bl", x: clickedImage.position.x - hw, y: clickedImage.position.y + hh },
-              { name: "br", x: clickedImage.position.x + hw, y: clickedImage.position.y + hh },
-            ];
-
-            const clickedCorner = corners.find(
-              (c) =>
-                worldPointer.x >= c.x - handleSize &&
-                worldPointer.x <= c.x + handleSize &&
-                worldPointer.y >= c.y - handleSize &&
-                worldPointer.y <= c.y + handleSize
-            );
-
-            if (clickedCorner) {
-              dragStateRef.current = {
-                ...dragStateRef.current,
-                isResizing: true,
-                resizeCorner: clickedCorner.name,
-                selectedImage: clickedImage,
-                dragStart: worldPointer.clone(),
-                imageStartPos: clickedImage.position.clone(),
-                imageStartScale: clickedImage.scale,
-              };
-            } else {
-              dragStateRef.current = {
-                ...dragStateRef.current,
-                selectedImage: clickedImage,
-                imageStartScale: clickedImage.scale,
-              };
-            }
-          } else if (currentModeRef.current === "cut" && clickedImage) {
-            // Start drawing cut path
+            // Select image for resizing
             dragStateRef.current = {
               ...dragStateRef.current,
-              isCutting: true,
               selectedImage: clickedImage,
-              cutPath: [worldPointer.clone()],
+              dragStart: worldPointer.clone(),
+              imageStartPos: clickedImage.position.clone(),
+              imageStartScale: clickedImage.scale,
+            };
+          } else if (currentModeRef.current === "cut" && clickedImage) {
+            // Start drawing cut path on the clicked image
+            dragStateRef.current = {
+              ...dragStateRef.current,
+              selectedImage: clickedImage,
               imageStartScale: clickedImage.scale,
             };
           } else if (currentModeRef.current === "erase" && clickedImage) {
             // Start erasing
             dragStateRef.current = {
               ...dragStateRef.current,
-              isErasing: true,
               selectedImage: clickedImage,
               imageStartScale: clickedImage.scale,
             };
-
-            // Start erasing at this point
-            eraseAtPoint(clickedImage, worldPointer, viewport.scale);
           } else {
             dragStateRef.current = {
               ...dragStateRef.current,
@@ -320,7 +264,8 @@ function App() {
             if (imgIndex !== -1) {
               imagesRef.current[imgIndex].position = newPosition;
             }
-          } else if (dragStateRef.current.isResizing && dragStateRef.current.selectedImage && dragStateRef.current.dragStart) {
+          } else if (currentModeRef.current === "resize" && dragStateRef.current.selectedImage && dragStateRef.current.dragStart) {
+            dragStateRef.current.isResizing = true;
             const delta = worldPointer.$subtract(dragStateRef.current.dragStart);
             const distance = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
             const sign = (delta.x + delta.y) > 0 ? 1 : -1;
@@ -328,21 +273,25 @@ function App() {
 
             const newScale = Math.max(0.1, dragStateRef.current.imageStartScale + scaleDelta);
 
-            setImages((prev) =>
-              prev.map((img) =>
-                img.id === dragStateRef.current.selectedImage?.id
-                  ? { ...img, scale: newScale }
-                  : img
-              )
-            );
-          } else if (dragStateRef.current.isCutting) {
-            // Add point to cut path
-            const lastPoint = dragStateRef.current.cutPath[dragStateRef.current.cutPath.length - 1];
-            if (lastPoint && worldPointer.$subtract(lastPoint).magnitude() > 10 / viewport.scale) {
-              dragStateRef.current.cutPath.push(worldPointer.clone());
+            // Update directly in ref
+            const imgIndex = imagesRef.current.findIndex(img => img.id === dragStateRef.current.selectedImage?.id);
+            if (imgIndex !== -1) {
+              imagesRef.current[imgIndex].scale = newScale;
             }
-          } else if (dragStateRef.current.isErasing && dragStateRef.current.selectedImage) {
-            // Continue erasing
+          } else if (currentModeRef.current === "cut" && dragStateRef.current.selectedImage) {
+            // Start/continue drawing cut path
+            dragStateRef.current.isCutting = true;
+            if (dragStateRef.current.cutPath.length === 0) {
+              dragStateRef.current.cutPath = [worldPointer.clone()];
+            } else {
+              const lastPoint = dragStateRef.current.cutPath[dragStateRef.current.cutPath.length - 1];
+              if (lastPoint && worldPointer.$subtract(lastPoint).magnitude() > 10 / viewport.scale) {
+                dragStateRef.current.cutPath.push(worldPointer.clone());
+              }
+            }
+          } else if (currentModeRef.current === "erase" && dragStateRef.current.selectedImage) {
+            // Erase on drag
+            dragStateRef.current.isErasing = true;
             eraseAtPoint(dragStateRef.current.selectedImage, worldPointer, viewport.scale);
           } else if (dragStateRef.current.isPanning && dragStateRef.current.dragStart) {
             const delta = pointer.$subtract(dragStateRef.current.dragStart);
@@ -352,14 +301,16 @@ function App() {
         }
 
         if (type === "up") {
-          // Sync state after dragging
-          if (dragStateRef.current.isDraggingImage) {
+          // Sync state after dragging or resizing
+          if (dragStateRef.current.isDraggingImage || dragStateRef.current.isResizing) {
             setImages([...imagesRef.current]);
           }
 
           // If finishing a cut, create a new image from the cut region
           if (dragStateRef.current.isCutting && dragStateRef.current.cutPath.length > 2 && dragStateRef.current.selectedImage) {
+            console.log('Processing cut with', dragStateRef.current.cutPath.length, 'points');
             const cutImage = dragStateRef.current.selectedImage;
+            const sourceCanvas = cutImage.modifiedCanvas || cutImage.img;
 
             // Create a temporary canvas to extract the cut region
             const tempCanvas = document.createElement("canvas");
@@ -374,6 +325,8 @@ function App() {
               return new Pt(localX, localY);
             });
 
+            console.log('Local path:', localPath);
+
             // Draw clipped image
             tempCtx.save();
             tempCtx.beginPath();
@@ -383,12 +336,36 @@ function App() {
             });
             tempCtx.closePath();
             tempCtx.clip();
-            tempCtx.drawImage(cutImage.img, 0, 0);
+            tempCtx.drawImage(sourceCanvas, 0, 0);
             tempCtx.restore();
+
+            // Also erase from the original image
+            if (!cutImage.modifiedCanvas) {
+              cutImage.modifiedCanvas = document.createElement("canvas");
+              cutImage.modifiedCanvas.width = cutImage.img.width;
+              cutImage.modifiedCanvas.height = cutImage.img.height;
+              const modCtx = cutImage.modifiedCanvas.getContext("2d")!;
+              modCtx.drawImage(sourceCanvas, 0, 0);
+            }
+
+            const modCtx = cutImage.modifiedCanvas.getContext("2d")!;
+            modCtx.globalCompositeOperation = "destination-out";
+            modCtx.beginPath();
+            localPath.forEach((pt, i) => {
+              if (i === 0) modCtx.moveTo(pt.x, pt.y);
+              else modCtx.lineTo(pt.x, pt.y);
+            });
+            modCtx.closePath();
+            modCtx.fill();
+            modCtx.globalCompositeOperation = "source-over";
+
+            // Force update original image
+            setImages((prev) => [...prev]);
 
             // Create new image from canvas
             const newImg = new Image();
             newImg.onload = () => {
+              console.log('Cut image created');
               // Calculate centroid of cut path for position
               const centroid = localPath.reduce((acc, pt) => acc.$add(pt), new Pt(0, 0)).$divide(localPath.length);
               const worldCentroid = new Pt(
