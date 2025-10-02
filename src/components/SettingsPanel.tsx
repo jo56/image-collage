@@ -100,7 +100,7 @@ export function SettingsPanel({
           userSelect: "none",
         }}
       >
-        Photo Collage
+        Image Collage
       </h3>
 
       <div style={{ marginBottom: "12px" }} onClick={(e) => e.stopPropagation()}>
@@ -119,7 +119,7 @@ export function SettingsPanel({
             boxSizing: "border-box",
           }}
         >
-          Upload Image
+          Upload File
           <input
             type="file"
             accept="image/*"
