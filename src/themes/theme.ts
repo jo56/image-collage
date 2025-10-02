@@ -138,7 +138,7 @@ export const themes: ThemeConfig[] = [
     panel: {
       background: 'rgba(255, 255, 255, 0.85)',
       border: '#1a1a1a',
-      borderWidth: '3px',
+      borderWidth: '2px',
       borderRadius: '0px',
       shadow: '8px 8px 0px rgba(0, 0, 0, 0.2)',
       fontFamily: '"Times New Roman", "Georgia", serif',
