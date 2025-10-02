@@ -15,7 +15,7 @@ function App() {
   const [images, setImages] = useState<CollageImage[]>([]);
   const [currentMode, setCurrentMode] = useState<ToolMode>("move");
   const [settingsVisible, setSettingsVisible] = useState(true);
-  const [settingsPosition, setSettingsPosition] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const [settingsPosition, setSettingsPosition] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 4 });
 
   const mousePositionRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const currentModeRef = useRef<ToolMode>(currentMode);
@@ -195,7 +195,6 @@ function App() {
         const pointer = new Pt(px, py);
         const worldPointer = screenToWorld(pointer, viewport);
 
-        console.log('Canvas action:', type, 'mode:', currentModeRef.current, 'images:', imagesRef.current.length, 'cutPath:', dragStateRef.current.cutPath.length);
 
         if (type === "down") {
           // Find clicked image (reverse order to get top image)
@@ -308,15 +307,8 @@ function App() {
 
           // If finishing a cut, create a new image from the cut region
           if (dragStateRef.current.isCutting && dragStateRef.current.cutPath.length > 2 && dragStateRef.current.selectedImage) {
-            console.log('Processing cut with', dragStateRef.current.cutPath.length, 'points');
             const cutImage = dragStateRef.current.selectedImage;
-            const sourceCanvas = cutImage.modifiedCanvas || cutImage.img;
-
-            // Create a temporary canvas to extract the cut region
-            const tempCanvas = document.createElement("canvas");
-            tempCanvas.width = cutImage.img.width;
-            tempCanvas.height = cutImage.img.height;
-            const tempCtx = tempCanvas.getContext("2d")!;
+            const sourceImg = cutImage.modifiedCanvas || cutImage.img;
 
             // Translate path to image-local coordinates
             const localPath = dragStateRef.current.cutPath.map((pt) => {
@@ -325,27 +317,41 @@ function App() {
               return new Pt(localX, localY);
             });
 
-            console.log('Local path:', localPath);
+            // Calculate bounding box of the cut path
+            const minX = Math.min(...localPath.map(pt => pt.x));
+            const maxX = Math.max(...localPath.map(pt => pt.x));
+            const minY = Math.min(...localPath.map(pt => pt.y));
+            const maxY = Math.max(...localPath.map(pt => pt.y));
+            const width = maxX - minX;
+            const height = maxY - minY;
 
-            // Draw clipped image
-            tempCtx.save();
-            tempCtx.beginPath();
+            // Create canvas for the cut piece
+            const cutCanvas = document.createElement("canvas");
+            cutCanvas.width = width;
+            cutCanvas.height = height;
+            const cutCtx = cutCanvas.getContext("2d")!;
+
+            // Draw the cut piece
+            cutCtx.save();
+            cutCtx.translate(-minX, -minY);
+            cutCtx.beginPath();
             localPath.forEach((pt, i) => {
-              if (i === 0) tempCtx.moveTo(pt.x, pt.y);
-              else tempCtx.lineTo(pt.x, pt.y);
+              if (i === 0) cutCtx.moveTo(pt.x, pt.y);
+              else cutCtx.lineTo(pt.x, pt.y);
             });
-            tempCtx.closePath();
-            tempCtx.clip();
-            tempCtx.drawImage(sourceCanvas, 0, 0);
-            tempCtx.restore();
+            cutCtx.closePath();
+            cutCtx.clip();
+            cutCtx.drawImage(sourceImg, 0, 0);
+            cutCtx.restore();
 
-            // Also erase from the original image
+            // Erase from the original image
             if (!cutImage.modifiedCanvas) {
               cutImage.modifiedCanvas = document.createElement("canvas");
               cutImage.modifiedCanvas.width = cutImage.img.width;
               cutImage.modifiedCanvas.height = cutImage.img.height;
               const modCtx = cutImage.modifiedCanvas.getContext("2d")!;
-              modCtx.drawImage(sourceCanvas, 0, 0);
+              modCtx.drawImage(sourceImg, 0, 0);
+              cutImage.modifiedCanvas = cutImage.modifiedCanvas;
             }
 
             const modCtx = cutImage.modifiedCanvas.getContext("2d")!;
@@ -359,25 +365,25 @@ function App() {
             modCtx.fill();
             modCtx.globalCompositeOperation = "source-over";
 
-            // Force update original image
+            // Force update
             setImages((prev) => [...prev]);
 
-            // Create new image from canvas
+            // Create new image from the cut piece
             const newImg = new Image();
             newImg.onload = () => {
-              console.log('Cut image created');
-              // Calculate centroid of cut path for position
-              const centroid = localPath.reduce((acc, pt) => acc.$add(pt), new Pt(0, 0)).$divide(localPath.length);
-              const worldCentroid = new Pt(
-                (centroid.x - cutImage.img.width / 2) * cutImage.scale + cutImage.position.x,
-                (centroid.y - cutImage.img.height / 2) * cutImage.scale + cutImage.position.y
+              // Calculate world position for the cut piece
+              const centerX = (minX + maxX) / 2;
+              const centerY = (minY + maxY) / 2;
+              const worldPos = new Pt(
+                (centerX - cutImage.img.width / 2) * cutImage.scale + cutImage.position.x,
+                (centerY - cutImage.img.height / 2) * cutImage.scale + cutImage.position.y
               );
 
-              const newCollageImage = createCollageImage(newImg, worldCentroid);
+              const newCollageImage = createCollageImage(newImg, worldPos);
               newCollageImage.scale = cutImage.scale;
               setImages((prev) => [...prev, newCollageImage]);
             };
-            newImg.src = tempCanvas.toDataURL();
+            newImg.src = cutCanvas.toDataURL();
           }
 
           dragStateRef.current = {
