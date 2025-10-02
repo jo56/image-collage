@@ -233,6 +233,7 @@ function App() {
               ...dragStateRef.current,
               selectedImage: clickedImage,
               imageStartScale: clickedImage.scale,
+              cutPath: [],
             };
           } else if (currentModeRef.current === "erase" && clickedImage) {
             // Start erasing
@@ -284,7 +285,7 @@ function App() {
               dragStateRef.current.cutPath = [worldPointer.clone()];
             } else {
               const lastPoint = dragStateRef.current.cutPath[dragStateRef.current.cutPath.length - 1];
-              if (lastPoint && worldPointer.$subtract(lastPoint).magnitude() > 10 / viewport.scale) {
+              if (lastPoint && worldPointer.$subtract(lastPoint).magnitude() > 5 / viewport.scale) {
                 dragStateRef.current.cutPath.push(worldPointer.clone());
               }
             }
@@ -369,21 +370,24 @@ function App() {
             setImages((prev) => [...prev]);
 
             // Create new image from the cut piece
-            const newImg = new Image();
-            newImg.onload = () => {
-              // Calculate world position for the cut piece
-              const centerX = (minX + maxX) / 2;
-              const centerY = (minY + maxY) / 2;
-              const worldPos = new Pt(
-                (centerX - cutImage.img.width / 2) * cutImage.scale + cutImage.position.x,
-                (centerY - cutImage.img.height / 2) * cutImage.scale + cutImage.position.y
-              );
+            const dataUrl = cutCanvas.toDataURL();
+            if (dataUrl && dataUrl.length > 100) {
+              const newImg = new Image();
+              newImg.onload = () => {
+                // Calculate world position for the cut piece
+                const centerX = (minX + maxX) / 2;
+                const centerY = (minY + maxY) / 2;
+                const worldPos = new Pt(
+                  (centerX - cutImage.img.width / 2) * cutImage.scale + cutImage.position.x,
+                  (centerY - cutImage.img.height / 2) * cutImage.scale + cutImage.position.y
+                );
 
-              const newCollageImage = createCollageImage(newImg, worldPos);
-              newCollageImage.scale = cutImage.scale;
-              setImages((prev) => [...prev, newCollageImage]);
-            };
-            newImg.src = cutCanvas.toDataURL();
+                const newCollageImage = createCollageImage(newImg, worldPos);
+                newCollageImage.scale = cutImage.scale;
+                setImages((prev) => [...prev, newCollageImage]);
+              };
+              newImg.src = dataUrl;
+            }
           }
 
           dragStateRef.current = {
