@@ -386,80 +386,102 @@ function App() {
             setImages([...imagesRef.current]);
           }
 
-          // If finishing a cut, create a new image from the cut region
-          if (wasCutting && cutPath.length >= 3 && cutImage) {
-            const sourceImg = cutImage.modifiedCanvas || cutImage.img;
+          // If finishing a cut, create a composite image from all overlapping images
+          if (wasCutting && cutPath.length >= 3) {
+            // Calculate bounding box in world coordinates
+            const worldMinX = Math.min(...cutPath.map(pt => pt.x));
+            const worldMaxX = Math.max(...cutPath.map(pt => pt.x));
+            const worldMinY = Math.min(...cutPath.map(pt => pt.y));
+            const worldMaxY = Math.max(...cutPath.map(pt => pt.y));
+            const worldWidth = worldMaxX - worldMinX;
+            const worldHeight = worldMaxY - worldMinY;
 
-            // Translate path to image-local coordinates
-            const localPath = cutPath.map((pt) => {
-              const localX = (pt.x - cutImage.position.x) / cutImage.scale + cutImage.img.width / 2;
-              const localY = (pt.y - cutImage.position.y) / cutImage.scale + cutImage.img.height / 2;
-              return new Pt(localX, localY);
-            });
+            if (worldWidth > 0 && worldHeight > 0) {
+              // Find all images that intersect with the cut path
+              const affectedImages = imagesRef.current.filter((img) => {
+                const hw = (img.img.width * img.scale) / 2;
+                const hh = (img.img.height * img.scale) / 2;
+                const imgMinX = img.position.x - hw;
+                const imgMaxX = img.position.x + hw;
+                const imgMinY = img.position.y - hh;
+                const imgMaxY = img.position.y + hh;
 
-            // Calculate bounding box
-            const minX = Math.max(0, Math.min(...localPath.map(pt => pt.x)));
-            const maxX = Math.min(cutImage.img.width, Math.max(...localPath.map(pt => pt.x)));
-            const minY = Math.max(0, Math.min(...localPath.map(pt => pt.y)));
-            const maxY = Math.min(cutImage.img.height, Math.max(...localPath.map(pt => pt.y)));
-            const width = Math.ceil(maxX - minX);
-            const height = Math.ceil(maxY - minY);
+                return !(imgMaxX < worldMinX || imgMinX > worldMaxX || imgMaxY < worldMinY || imgMinY > worldMaxY);
+              });
 
-            if (width > 0 && height > 0) {
-              // Create canvas for the cut piece
+              // Create a canvas to composite all affected images
+              const compositeCanvas = document.createElement("canvas");
+              compositeCanvas.width = Math.ceil(worldWidth);
+              compositeCanvas.height = Math.ceil(worldHeight);
+              const compositeCtx = compositeCanvas.getContext("2d")!;
+
+              // Draw all affected images to the composite canvas
+              affectedImages.forEach((img) => {
+                const drawSource = img.modifiedCanvas || img.img;
+                const imgX = img.position.x - (img.img.width * img.scale) / 2 - worldMinX;
+                const imgY = img.position.y - (img.img.height * img.scale) / 2 - worldMinY;
+                compositeCtx.drawImage(
+                  drawSource,
+                  imgX,
+                  imgY,
+                  img.img.width * img.scale,
+                  img.img.height * img.scale
+                );
+              });
+
+              // Create the cut piece canvas
               const cutCanvas = document.createElement("canvas");
-              cutCanvas.width = width;
-              cutCanvas.height = height;
-              const cutCtx = cutCanvas.getContext("2d", { willReadFrequently: true })!;
+              cutCanvas.width = compositeCanvas.width;
+              cutCanvas.height = compositeCanvas.height;
+              const cutCtx = cutCanvas.getContext("2d")!;
 
-              // Draw the cut piece
+              // Apply the cut path as a mask
               cutCtx.save();
-              cutCtx.translate(-minX, -minY);
               cutCtx.beginPath();
-              localPath.forEach((pt, i) => {
-                if (i === 0) cutCtx.moveTo(pt.x, pt.y);
-                else cutCtx.lineTo(pt.x, pt.y);
+              cutPath.forEach((pt, i) => {
+                const localX = pt.x - worldMinX;
+                const localY = pt.y - worldMinY;
+                if (i === 0) cutCtx.moveTo(localX, localY);
+                else cutCtx.lineTo(localX, localY);
               });
               cutCtx.closePath();
               cutCtx.clip();
-              cutCtx.drawImage(sourceImg, 0, 0);
+              cutCtx.drawImage(compositeCanvas, 0, 0);
               cutCtx.restore();
 
-              // Erase from the original image
-              if (!cutImage.modifiedCanvas) {
-                cutImage.modifiedCanvas = document.createElement("canvas");
-                cutImage.modifiedCanvas.width = cutImage.img.width;
-                cutImage.modifiedCanvas.height = cutImage.img.height;
-                const modCtx = cutImage.modifiedCanvas.getContext("2d")!;
-                modCtx.drawImage(sourceImg, 0, 0);
-              }
+              // Erase the cut region from all affected images
+              affectedImages.forEach((img) => {
+                const sourceImg = img.modifiedCanvas || img.img;
+                if (!img.modifiedCanvas) {
+                  img.modifiedCanvas = document.createElement("canvas");
+                  img.modifiedCanvas.width = img.img.width;
+                  img.modifiedCanvas.height = img.img.height;
+                  const modCtx = img.modifiedCanvas.getContext("2d")!;
+                  modCtx.drawImage(sourceImg, 0, 0);
+                }
 
-              const modCtx = cutImage.modifiedCanvas.getContext("2d")!;
-              modCtx.globalCompositeOperation = "destination-out";
-              modCtx.beginPath();
-              localPath.forEach((pt, i) => {
-                if (i === 0) modCtx.moveTo(pt.x, pt.y);
-                else modCtx.lineTo(pt.x, pt.y);
+                const modCtx = img.modifiedCanvas.getContext("2d")!;
+                modCtx.globalCompositeOperation = "destination-out";
+                modCtx.beginPath();
+                cutPath.forEach((pt, i) => {
+                  const localX = (pt.x - img.position.x) / img.scale + img.img.width / 2;
+                  const localY = (pt.y - img.position.y) / img.scale + img.img.height / 2;
+                  if (i === 0) modCtx.moveTo(localX, localY);
+                  else modCtx.lineTo(localX, localY);
+                });
+                modCtx.closePath();
+                modCtx.fill();
+                modCtx.globalCompositeOperation = "source-over";
               });
-              modCtx.closePath();
-              modCtx.fill();
-              modCtx.globalCompositeOperation = "source-over";
 
-              // Create new image from the cut piece immediately
+              // Create new image from the cut piece
               const newImg = new Image();
               newImg.onload = () => {
-                // Calculate world position for the cut piece
-                const centerX = (minX + maxX) / 2;
-                const centerY = (minY + maxY) / 2;
-                const worldPos = new Pt(
-                  (centerX - cutImage.img.width / 2) * cutImage.scale + cutImage.position.x,
-                  (centerY - cutImage.img.height / 2) * cutImage.scale + cutImage.position.y
-                );
+                const worldCenterX = (worldMinX + worldMaxX) / 2;
+                const worldCenterY = (worldMinY + worldMaxY) / 2;
 
-                const newCollageImage = createCollageImage(newImg, worldPos);
-                newCollageImage.scale = cutImage.scale;
-
-                // Update both images at once
+                const newCollageImage = createCollageImage(newImg, new Pt(worldCenterX, worldCenterY));
+                newCollageImage.scale = 1;
                 setImages((prev) => [...prev, newCollageImage]);
               };
               newImg.src = cutCanvas.toDataURL();

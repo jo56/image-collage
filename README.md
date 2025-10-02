@@ -1,73 +1,64 @@
-# React + TypeScript + Vite
+# Image Collage
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Create beautiful image collages with an intuitive canvas-based interface. Upload photos, arrange them freely, and use powerful editing tools to create stunning compositions.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Infinite Canvas**: Pan and zoom to work with unlimited space
+- **Multiple Tools**:
+  - **Move**: Drag images to reposition them, click to bring to front
+  - **Resize**: Drag images to scale them up or down
+  - **Cut**: Draw shapes to cut out portions of images (works across multiple overlapping images)
+  - **Erase**: Click and drag to erase parts of images
+- **Smooth Interactions**: Fluid drag-and-drop with real-time updates
+- **Clean UI**: Minimalist newsprint-themed interface
+- **Keyboard Shortcuts**: Press Shift to toggle the tools panel
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Installation
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+### Build
+
+```bash
+npm run build
+```
+
+### Deploy
+
+```bash
+npm run deploy
+```
+
+Deploys to GitHub Pages at `https://[username].github.io/image-collage/`
+
+## Usage
+
+1. **Upload Images**: Click "Upload File" to add images to your canvas
+2. **Move Images**: Select "Move" mode and drag images around. Click an image to bring it to the front
+3. **Resize Images**: Select "Resize" mode and drag to scale images
+4. **Cut Shapes**: Select "Cut" mode, click and drag to draw a shape across one or more images. When you release, a new cutout is created
+5. **Erase**: Select "Erase" mode and drag to remove parts of images
+6. **Pan Canvas**: Click and drag empty space to move the viewport
+7. **Zoom**: Use mouse wheel to zoom in/out
+
+## Technology Stack
+
+- **React** + **TypeScript** - UI framework
+- **Vite** - Build tool
+- **Pts.js** - Canvas rendering and interactions
+- **GitHub Pages** - Deployment
+
+## License
+
+MIT
