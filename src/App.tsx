@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CanvasSpace, CanvasForm, Pt } from "pts";
+import { CanvasSpace, CanvasForm, Pt, Circle } from "pts";
 import { SettingsPanel } from "./components/SettingsPanel";
 import type { CollageImage, ToolMode } from "./types/Image";
 import type { ViewportTransform } from "./utils/canvasHelpers";
@@ -368,7 +368,7 @@ function App() {
           } else if (currentModeRef.current === "erase" && dragStateRef.current.selectedImage) {
             // Erase on drag
             dragStateRef.current.isErasing = true;
-            eraseAtPoint(dragStateRef.current.selectedImage, worldPointer, viewport.scale);
+            eraseAtPoint(dragStateRef.current.selectedImage, worldPointer);
           } else if (dragStateRef.current.isPanning && dragStateRef.current.dragStart) {
             const delta = pointer.$subtract(dragStateRef.current.dragStart);
             viewport.offset = viewport.offset.$add(delta);
