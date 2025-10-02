@@ -1,19 +1,3 @@
-# Image Collage
-
-Create beautiful image collages with an intuitive canvas-based interface. Upload photos, arrange them freely, and use powerful editing tools to create stunning compositions.
-
-## Features
-
-- **Infinite Canvas**: Pan and zoom to work with unlimited space
-- **Multiple Tools**:
-  - **Move**: Drag images to reposition them, click to bring to front
-  - **Resize**: Drag images to scale them up or down
-  - **Cut**: Draw shapes to cut out portions of images (works across multiple overlapping images)
-  - **Erase**: Click and drag to erase parts of images
-- **Smooth Interactions**: Fluid drag-and-drop with real-time updates
-- **Clean UI**: Minimalist newsprint-themed interface
-- **Keyboard Shortcuts**: Press Shift to toggle the tools panel
-
 ## Getting Started
 
 ### Installation
@@ -34,14 +18,6 @@ npm run dev
 npm run build
 ```
 
-### Deploy
-
-```bash
-npm run deploy
-```
-
-Deploys to GitHub Pages at `https://[username].github.io/image-collage/`
-
 ## Usage
 
 1. **Upload Images**: Click "Upload File" to add images to your canvas
@@ -57,7 +33,6 @@ Deploys to GitHub Pages at `https://[username].github.io/image-collage/`
 - **React** + **TypeScript** - UI framework
 - **Vite** - Build tool
 - **Pts.js** - Canvas rendering and interactions
-- **GitHub Pages** - Deployment
 
 ## License
 
