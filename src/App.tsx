@@ -127,7 +127,7 @@ function App() {
       // Erase at this point
       const ctx = img.modifiedCanvas.getContext("2d")!;
       ctx.globalCompositeOperation = "destination-out";
-      const brushSize = dragStateRef.current.eraseBrushSize / img.scale;
+      const brushSize = dragStateRef.current.eraseBrushSize / (img.scale * viewportRef.current.scale);
       ctx.beginPath();
       ctx.arc(localX, localY, brushSize, 0, Math.PI * 2);
       ctx.fill();
@@ -517,7 +517,7 @@ function App() {
       // Apply zoom
       const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
       viewport.scale *= zoomFactor;
-      viewport.scale = Math.max(0.1, Math.min(5, viewport.scale));
+      viewport.scale = Math.max(0.1, Math.min(20, viewport.scale));
 
       // Adjust offset to keep the world point under the mouse cursor fixed
       // worldPoint = (pointer - offset) / scale
