@@ -1,4 +1,4 @@
-# Image Collage
+# image-collage
 
   <div align="center">
       <a href="https://jo56.github.io/image-collage" target="_blank">
