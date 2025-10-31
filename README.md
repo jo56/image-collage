@@ -1,5 +1,17 @@
 # Image Collage
 
+  <div align="center">
+      <a href="https://jo56.github.io/image-collage" target="_blank">
+          <img src="assets/collage-preview-1.png" alt="collage preview">
+      </a>
+      <br>
+      <a href="https://jo56.github.io/image-collage" target="_blank">
+          <b>https://jo56.github.io/image-collage</b>
+      </a>
+  </div>
+
+<br>
+
 Simple tool for creating collages out of multiple images. The images can be manipulated and cut apart like regular photographs. Try to see what other kinds of images you can create.
 
 ## Getting Started
